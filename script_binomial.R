@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------------------------
 
-# App Script
+# Animação do tipo gif, ajuste de betas por IWLS da distribução Binomial
 
 # -------------------------------------------------------------------------------------------
 
@@ -8,7 +8,6 @@
 library(tibble)
 library(ggplot2)
 library(gganimate)
-library(babynames)
 library(hrbrthemes)
 library(viridis)
 library(gifski)
@@ -51,7 +50,7 @@ EMV <- function(Y, Xs, beta, iter, tol){
     eta <- Xs %*% beta
     
     # Calcula media inicial
-    theta <- exp(eta)
+    theta <- exp(eta) / (1 + exp(eta))
     
     # Calcula diagonal da matriz Wi
     W_i <- calcula_W(eta, theta)
@@ -97,7 +96,7 @@ EMV <- function(Y, Xs, beta, iter, tol){
 # -------------------------------------------------------------------------------------------
 
 # Declara Y
-Y = sort(rpois(50, 15), decreasing = T)
+Y = sort(rbinom(50, 10, 0.5), decreasing = T)
 
 # Declara X
 X = sort(rnorm(50, 0, 0.5))
@@ -144,7 +143,7 @@ original <- tibble(iter = rep(df_anime$iter[nrow(df_anime)], length(Y)),
 # Declara Data
 dados <- df_anime %>% 
   bind_rows(original)
- 
+
 # Plot
 p <- dados %>%
   ggplot( aes(x=X, y=pred, group = Y, color = Y)) +
