@@ -1,8 +1,9 @@
 # -------------------------------------------------------------------------------------------
 
-# Animação do tipo gif, ajuste de betas por IWLS da distribução Binomial Negativa
+# Animação do tipo gif, ajuste de betas por IWLS da distribução Gama
 
 # -------------------------------------------------------------------------------------------
+
 
 # libraries:
 library(tibble)
@@ -35,7 +36,7 @@ calcula_Z <- function(eta, Y){
 }
 
 # Funcao estimativa de betas
-EMV <- function(Y, Xs, beta, iter, tol){
+EMV <- function(Y, Xs, beta, iter, tol, alfa){
   
   # Declara betas
   betas <- tibble(iter = 0:iter,
@@ -50,7 +51,7 @@ EMV <- function(Y, Xs, beta, iter, tol){
     eta <- Xs %*% beta
     
     # Calcula media inicial
-    theta <- exp(eta) 
+    theta <- (- alfa / eta) 
     
     # Calcula diagonal da matriz Wi
     W_i <- calcula_W(eta, theta)
@@ -96,10 +97,10 @@ EMV <- function(Y, Xs, beta, iter, tol){
 # -------------------------------------------------------------------------------------------
 
 # Declara Y
-Y = sort(rnbinom(50, 10, 0.5), decreasing = T)
+Y = sort(rgamma(100, shape = 1, rate = 1), decreasing = T)
 
 # Declara X
-X = sort(rnorm(50, 0, 0.5))
+X = sort(rnorm(100, 0, 0.5))
 
 # Declara matriz de Xs
 Xs = cbind(rep(1, length(X)), X)
@@ -108,7 +109,7 @@ Xs = cbind(rep(1, length(X)), X)
 beta0 = c(1, 1)
 
 # Executa EMV
-sol = EMV(Y, Xs, beta0, 30, 5) 
+sol = EMV(Y, Xs, beta0, 30, 5, 1) 
 
 # Define estados
 estados = paste0(rep(sol$iter, each = length(Y)),"    ",
@@ -148,7 +149,7 @@ dados <- df_anime %>%
 p <- dados %>%
   ggplot( aes(x=X, y=pred, group = Y, color = Y)) +
   geom_point(size = 4, alpha = 0.7) +
-  labs(title = "Optimização EMV IWLS Poisson",
+  labs(title = "Optimização EMV IWLS Sigma",
        subtitle = paste("Iteração:  ","{closest_state}"),
        y = "Y")+
   transition_states(estados,
@@ -162,5 +163,4 @@ animate(p, fps = 5, renderer = gifski_renderer(loop = F))
 
 
 # -------------------------------------------------------------------------------------------
-
 

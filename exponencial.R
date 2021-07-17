@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------------------------
 
-# Animação do tipo gif, ajuste de betas por IWLS da distribução Binomial
+# Animação do tipo gif, ajuste de betas por IWLS da distribução Exponencial
 
 # -------------------------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ EMV <- function(Y, Xs, beta, iter, tol){
     eta <- Xs %*% beta
     
     # Calcula media inicial
-    theta <- exp(eta) / (1 + exp(eta))
+    theta <- -1 / eta
     
     # Calcula diagonal da matriz Wi
     W_i <- calcula_W(eta, theta)
@@ -96,7 +96,7 @@ EMV <- function(Y, Xs, beta, iter, tol){
 # -------------------------------------------------------------------------------------------
 
 # Declara Y
-Y = sort(rbinom(50, 10, 0.5), decreasing = T)
+Y = sort(rexp(50, 10), decreasing = T)
 
 # Declara X
 X = sort(rnorm(50, 0, 0.5))
@@ -148,7 +148,7 @@ dados <- df_anime %>%
 p <- dados %>%
   ggplot( aes(x=X, y=pred, group = Y, color = Y)) +
   geom_point(size = 4, alpha = 0.7) +
-  labs(title = "Optimização EMV IWLS Binomial",
+  labs(title = "Optimização EMV IWLS Exponêncial",
        subtitle = paste("Iteração:  ","{closest_state}"),
        y = "Y")+
   transition_states(estados,
