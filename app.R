@@ -1,9 +1,7 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
+
 # --------------------------------------------------------------------------
 
-# Aplicativo Shiny
+# Aplicativo Shiny Ajuste da Curva
 
 # --------------------------------------------------------------------------
  
@@ -47,8 +45,10 @@ EMV <- function(Y, Xs, beta, iter, tol){
                     beta0 = as.numeric(beta[1]),
                     beta1 = as.numeric(beta[2]))
     
+    # Laco para popular betas calculados nas iterações
     for(r in 1:iter){
         
+        # Recupera beta da vez
         beta <- t(betas[r, c(2,3) ] %>% as.matrix())
         
         # Calcula eta0
@@ -96,13 +96,17 @@ EMV <- function(Y, Xs, beta, iter, tol){
 
 # --------------------------------------------------------------------------
 
+# Interface do Usuário
+
+# --------------------------------------------------------------------------
+
 # Declara interface do usuario
 ui <- fluidPage(
 
     # Titulo do aplicativo
     titlePanel("Estimador IWLS Poisson"),
 
-    # Barra lateral de entradas 
+    # Barra lateral de entradas do usuário
     sidebarLayout(
         sidebarPanel(
             h3("Amostra"),
@@ -150,10 +154,16 @@ ui <- fluidPage(
     )
 )
 
+# --------------------------------------------------------------------------
+
+# Servidor
+
+# --------------------------------------------------------------------------
+
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
-    # Observa clique do botao optimizar
+    # Observa clique do botao amostrar
     dados <- eventReactive(input$amostre, {
         
         # Declara Y
@@ -230,7 +240,7 @@ server <- function(input, output) {
     # Renderiza Grafico
     output$grafico <- renderImage({
         
-        # Plot
+        # Declara objeto gráfico
         p <- animacao() %>%
             ggplot( aes(x=X, y=pred, group = Y, color = Y)) +
             geom_point(size = 4, alpha = 0.7) +
@@ -256,5 +266,7 @@ server <- function(input, output) {
         
 }
 
-# Run the application 
+# --------------------------------------------------------------------------
+
+# Executa o aplicativo 
 shinyApp(ui = ui, server = server)

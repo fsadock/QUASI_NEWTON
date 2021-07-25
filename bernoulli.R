@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------------------------------
 
-# Animação da otimização IWLS distribução Binomial Negativa
+# Animação do tipo gif, ajuste de betas por IWLS da distribução Bernoulli complemento loglog
 
 # -------------------------------------------------------------------------------------------
 
@@ -19,41 +19,42 @@ library(gifski)
 # -------------------------------------------------------------------------------------------
 
 # Declara função calcula W de W
-calcula_W <- function(eta, theta){
+calcula_W <- function(eta){
   
   # Calcula W
-  (1 / theta) * exp(2 * eta)
+  ( exp( (2 * eta) - ( exp(eta) ) ) / (1 - exp(-exp(eta))) )
   
 }
 
 # Declara função Z
 calcula_Z <- function(eta, Y){
   
+  # Calcula theta
+  theta <- 1 - exp(-exp(eta))
+  
   # Calcula Z
-  eta + ( Y * exp(-eta) ) - 1 
+  eta + ( Y - theta )  * (- 1 / (log(1 - theta) * (1 - theta) ) )       
   
 }
 
 # Funcao estimativa de betas
-EMV <- function(Y, Xs, beta, iter, tol){
+EMV <- function(Y, Xs, b, iter, tol){
   
   # Declara betas
   betas <- tibble(iter = 0:iter,
-                  beta0 = as.numeric(beta[1]),
-                  beta1 = as.numeric(beta[2]))
+                  beta0 = as.numeric(b[1]),
+                  beta1 = as.numeric(b[2]))
   
   for(r in 1:iter){
     
-    beta <- t(betas[r, c(2,3) ] %>% as.matrix())
+    # Recupera beta estimado da vez
+    b_hat <- t(betas[r, c(2,3) ] %>% as.matrix())
     
     # Calcula eta0
-    eta <- Xs %*% beta
-    
-    # Calcula media inicial
-    theta <- exp(eta) 
+    eta <- Xs %*% b_hat
     
     # Calcula diagonal da matriz Wi
-    W_i <- calcula_W(eta, theta)
+    W_i <- calcula_W(eta)
     
     # Declara matriz W
     W <- diag(length(Y))
@@ -95,20 +96,26 @@ EMV <- function(Y, Xs, beta, iter, tol){
 
 # -------------------------------------------------------------------------------------------
 
-# Declara Y
-Y = sort(rnbinom(50, 10, 0.5), decreasing = T)
+# Declara betas reais
+betas_reais <- c(4, -1) 
 
 # Declara X
-X = sort(rnorm(50, 0, 0.5))
+X <- sort(rnorm(50, 0, 0.5))
 
 # Declara matriz de Xs
-Xs = cbind(rep(1, length(X)), X)
+Xs <- cbind(rep(1, length(X)), X)
+
+# Calcula eta0
+eta <- Xs %*% betas_reais
+
+# Declara vetor Y
+Y = 1 / (1 + exp(-eta) )
 
 # Declara beta 0
 beta0 = c(1, 1)
 
 # Executa EMV
-sol = EMV(Y, Xs, beta0, 30, 5) 
+sol = EMV(Y, Xs, beta0, 150, 5) 
 
 # --------------------------------------------------------------------------------------------
 
@@ -154,7 +161,7 @@ dados <- df_anime %>%
 p <- dados %>%
   ggplot( aes(x=X, y=pred, group = Y, color = Y)) +
   geom_point(size = 4, alpha = 0.7) +
-  labs(title = "Optimização EMV IWLS Binomial Negativa",
+  labs(title = "Optimização EMV IWLS Binomial",
        subtitle = paste("Iteração:  ","{closest_state}"),
        y = "Y")+
   transition_states(estados,

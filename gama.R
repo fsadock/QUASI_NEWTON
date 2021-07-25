@@ -1,9 +1,8 @@
 # -------------------------------------------------------------------------------------------
 
-# Animação do tipo gif, ajuste de betas por IWLS da distribução Gama
+# Animação da otimização IWLS distribução Gama
 
 # -------------------------------------------------------------------------------------------
-
 
 # libraries:
 library(tibble)
@@ -20,10 +19,11 @@ library(gifski)
 # -------------------------------------------------------------------------------------------
 
 # Declara função calcula W de W
-calcula_W <- function(eta, theta){
+calcula_W <- function(eta, theta, alfa){
   
   # Calcula W
-  (1 / theta) * exp(2 * eta)
+  #(1 / theta) * exp(2 * eta)
+  (alfa/theta^2) * (-1/eta^2)^2
   
 }
 
@@ -31,11 +31,12 @@ calcula_W <- function(eta, theta){
 calcula_Z <- function(eta, Y){
   
   # Calcula Z
-  eta + ( Y * exp(-eta) ) - 1 
+  #eta + ( Y * exp(-eta) ) - 1 
+  2*eta - (Y*(eta^2))
   
 }
 
-# Funcao estimativa de betas
+# Funcao estimativa de betas1
 EMV <- function(Y, Xs, beta, iter, tol, alfa){
   
   # Declara betas
@@ -51,10 +52,10 @@ EMV <- function(Y, Xs, beta, iter, tol, alfa){
     eta <- Xs %*% beta
     
     # Calcula media inicial
-    theta <- (- alfa / eta) 
+    theta <- (1 / eta)
     
-    # Calcula diagonal da matriz Wi
-    W_i <- calcula_W(eta, theta)
+    # Calcula diagonal da matriz W
+    W_i <- calcula_W(eta, theta, alfa)
     
     # Declara matriz W
     W <- diag(length(Y))
@@ -73,6 +74,7 @@ EMV <- function(Y, Xs, beta, iter, tol, alfa){
     norma <- sqrt(sum((abs(betas[r+1, c(2,3)] - betas[r, c(2,3)]))^2))
     
     # Condição de parada
+    
     if(norma < 10^(-tol)){
       
       # Resultado
@@ -86,30 +88,34 @@ EMV <- function(Y, Xs, beta, iter, tol, alfa){
   }
   
   # Retorno da função
+  print(betas)
   return(resultado)
   
 }
 
 # -------------------------------------------------------------------------------------------
 
-# Otimização Poisson
+# Otimização Gamma
 
 # -------------------------------------------------------------------------------------------
 
 # Declara Y
-Y = sort(rgamma(100, shape = 1, rate = 1), decreasing = T)
+#Y = sort(rgamma(100, shape = 2, rate = 2/5), decreasing = T)
 
-# Declara X
-X = sort(rnorm(100, 0, 0.5))
+# Declara X e Y
+alpha = 5
+b = 2
+X = sort(rgamma(100, shape = alpha, rate = b), decreasing = T)
+Y = -alpha/(0.5 - X*5)
 
 # Declara matriz de Xs
 Xs = cbind(rep(1, length(X)), X)
 
 # Declara beta 0
-beta0 = c(1, 1)
+beta0 = c(00000.1, 00000.1)
 
 # Executa EMV
-sol = EMV(Y, Xs, beta0, 30, 5, 1) 
+sol = EMV(Y, Xs, beta0, 100, 10, alpha)
 
 # Define estados
 estados = paste0(rep(sol$iter, each = length(Y)),"    ",
@@ -128,7 +134,7 @@ df_anime <- tibble(iter = rep(sol$iter, each = length(Y)),
 
 # Laco para popular betas
 for(i in 1:nrow(df_anime)){
-  df_anime[i, "pred"] = exp(df_anime$beta0[i] + df_anime$beta1[i] * df_anime$X[i])  
+  df_anime[i, "pred"] = 1/(df_anime$beta0[i] + df_anime$beta1[i] * df_anime$X[i])
 }
 
 # Data frame original
@@ -159,8 +165,7 @@ p <- dados %>%
   view_follow(fixed_x = T)
 
 # Salva animacao
-animate(p, fps = 5, renderer = gifski_renderer(loop = F))
+animate(p, fps = 10, renderer = gifski_renderer(loop = F))
 
 
 # -------------------------------------------------------------------------------------------
-

@@ -1,16 +1,19 @@
 # -------------------------------------------------------------------------------------------
 
-# Animação da otimização IWLS distribução Exponencial
+# Animação da otimização IWLS  distribução Poisson
 
 # -------------------------------------------------------------------------------------------
 
-# libraries:
-library(tibble)
+# Carrega Pacotes
+library(tidyverse)
 library(ggplot2)
 library(gganimate)
 library(hrbrthemes)
 library(viridis)
 library(gifski)
+library(plotly)
+library(transformr)
+library(metR)
 
 # -------------------------------------------------------------------------------------------
 
@@ -46,18 +49,19 @@ EMV <- function(Y, Xs, beta, tol){
   norma <- 1
   
   # Declara iteracao
-  r <- 1
+  r = 1
   
-  # Laco de otimizacao
-  while(norma > 10^(-tol)){
+  # Laco para popular betas calculados nas iterações
+  while(norma > tol){
     
+    # Recupera beta da vez
     beta <- t(betas[r, c(2,3) ] %>% as.matrix())
     
     # Calcula eta0
     eta <- Xs %*% beta
     
     # Calcula media inicial
-    theta <- -1 / eta
+    theta <- exp(eta)
     
     # Calcula diagonal da matriz Wi
     W_i <- calcula_W(eta, theta)
@@ -91,14 +95,15 @@ EMV <- function(Y, Xs, beta, tol){
   
 }
 
+
 # -------------------------------------------------------------------------------------------
 
-# Otimização Poisson
+# Otimização 
 
 # -------------------------------------------------------------------------------------------
 
 # Declara betas reais
-betas_reais <- c(4, 2) 
+betas_reais <- c(4, -1) 
 
 # Declara X
 X <- sort(rnorm(50, 0, 0.5))
@@ -110,13 +115,32 @@ Xs <- cbind(rep(1, length(X)), X)
 eta <- Xs %*% betas_reais
 
 # Declara vetor Y
-Y =  exp(eta)
+Y = exp(eta)
 
 # Declara beta 0
-beta0 = c(1, 1)
+beta0 <- c(1, 1)
 
 # Executa EMV
-sol = EMV(Y, Xs, beta0, 5) 
+sol <- EMV(Y, Xs, beta0, 10e-5) 
+
+# Visuaaliza beta estimado
+sol %>%  tail()
+
+# --------------------------------------------------------------------------------------------
+
+# Espaço de busca
+
+# --------------------------------------------------------------------------------------------
+
+# Declara betas 0 e betas 1
+betas0 <- seq(round(min(sol$beta0) -1),round(max(sol$beta0)+1),1)
+betas1 <- seq(round(min(sol$beta1) -1),round(max(sol$beta1)+1),1)
+
+# Define data frame espaço de busca
+espaco <- tibble(beta0 = rep(betas0, times = length(betas1)),
+                 beta1 = rep(betas1, each = length(betas0))) %>% 
+  mutate(dif_betas = sqrt((beta0 - betas_reais[1])^2 +
+                            (beta1 - betas_reais[2])^2))
 
 # --------------------------------------------------------------------------------------------
 
@@ -124,57 +148,30 @@ sol = EMV(Y, Xs, beta0, 5)
 
 # --------------------------------------------------------------------------------------------
 
-# Define estados
-estados = paste0(rep(sol$iter, each = length(Y)),"    ",
-                 "Beta 0:   ", rep(round(sol$beta0,4), each = length(Y)),"    ",
-                 "Beta 1:   ", rep(round(sol$beta1,4), each = length(Y)))
-
-# Gera data frame
-df_anime <- tibble(iter = rep(sol$iter, each = length(Y)),
-                   estados = factor(estados, levels = unique(estados)),
-                   beta0 = rep(sol$beta0, each = length(Y)),
-                   beta1 = rep(sol$beta1, each = length(Y)),
-                   X = rep(X, times = nrow(sol)),
-                   Observado = rep(Y, times = nrow(sol)),
-                   pred = 0.1,
-                   Y = "Estimado")
-
-# Laco para popular betas
-for(i in 1:nrow(df_anime)){
-  df_anime[i, "pred"] = exp(df_anime$beta0[i] + df_anime$beta1[i] * df_anime$X[i])  
-}
-
-# Data frame original
-original <- tibble(iter = rep(df_anime$iter[nrow(df_anime)], length(Y)),
-                   estados = rep(df_anime$estados[nrow(df_anime)], length(Y)),
-                   beta0 = rep(df_anime$beta0[nrow(df_anime)], length(Y)),
-                   beta1 = rep(df_anime$beta1[nrow(df_anime)], length(Y)),
-                   X = X,
-                   Observado = Y,
-                   pred = Y,
-                   Y = "Observado")
-
-# Declara Data
-dados <- df_anime %>% 
-  bind_rows(original)
-
-# Plot
-p <- dados %>%
-  ggplot( aes(x=X, y=pred, group = Y, color = Y)) +
-  geom_point(size = 4, alpha = 0.7) +
-  labs(title = "Optimização EMV IWLS Exponêncial",
-       subtitle = paste("Iteração:  ","{closest_state}"),
-       y = "Y")+
-  transition_states(estados,
-                    transition_length = 2,
-                    state_length = 4,
-                    wrap = FALSE) +
-  view_follow(fixed_x = T)
+# Declara grafico ggplot
+p <- ggplot(aes(x = beta0, y = beta1), data = sol)+
+  geom_tile(show.legend = T,data = espaco, mapping = aes(x = beta0, y = beta1, fill = dif_betas) )+
+  geom_contour(data = espaco, mapping = aes(x = beta0, y = beta1, z = dif_betas), color = "White" )+
+  geom_text_contour(data = espaco,
+                    aes(x = beta0, y = beta1, z = dif_betas),
+                    color = "white",
+                    size = 6,
+                    min.size = 1,
+                    skip = 0)+
+  geom_point(color = "red", size = 4)+
+  transition_time(iter) +
+  view_follow(fixed_x = T, fixed_y = T)+
+  labs(title = "Diferença de Betas Reais e Estimados",
+       x = "Beta 0",
+       y = "Beta 1",
+       fill = "Diferença",
+       subtitle = paste("Iteração:  ","{frame_time}"))+
+  theme(panel.grid = element_blank(),
+        panel.background = element_blank())
 
 # Salva animacao
 animate(p, fps = 5, renderer = gifski_renderer(loop = F))
 
-
-# -------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------
 
 
